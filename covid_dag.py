@@ -17,6 +17,7 @@ filename = '/home/nineleaps/Downloads/covid_data_{}.csv'.format(
 dataset_id = 'ashithal'
 table_id = 'airflow'
 
+#default arguments
 default_args = {
     'owner': 'airflow',
     'start_date': days_ago(0),
@@ -25,6 +26,7 @@ default_args = {
     'retries': 1,
     'retry_delay': timedelta(minutes=2),
 }
+# Instantiating dag
 dag = DAG(dag_id='covid_pipeline',
           default_args=default_args,
           description="Collecting covid data",
@@ -32,6 +34,9 @@ dag = DAG(dag_id='covid_pipeline',
           )
 
 def fetch_covid_data():
+    
+    "Fetch data from json"
+    
     r = requests.get('https://api.covidindiatracker.com/state_data.json')
     r_data = r.text
     data = json.loads(r_data)
@@ -47,8 +52,11 @@ def fetch_covid_data():
     return count
 
 def load_data(**kwargs):
+    
+    "Loading into bq table"
+    
     bq_dataset_ref = client.dataset(dataset_id)
-    bq_table_ref = dataset_ref.table(table_id)
+    bq_table_ref = bq_dataset_ref.table(table_id)
     job_config = bigquery.LoadJobConfig()
     job_config.source_format = bigquery.SourceFormat.CSV
     job_config.skip_leading_rows = 1
@@ -63,6 +71,8 @@ def load_data(**kwargs):
     return job.output_rows
 
 def read_data(**kwargs):
+    
+    "Calculating Percentage"
 
     t = kwargs['t']
     v1 = ti.xcom_pull(task_ids='load_data')
